@@ -54,14 +54,21 @@ def load_scenario(path: str) -> Scenario:
 async def build_scenario_from_config(config: Config):
     robot_type = ROBOTS.get(config.robot_type)
     scenario_type = SCENARIOS.get(config.scenario_type)
-    new_stage()
+
+    if config.is_nre_scene:
+        open_stage(config.scene_usd)
+    else:
+        new_stage()
     world = new_world(physics_dt=robot_type.physics_dt)
     await world.initialize_simulation_context_async()
-    add_reference_to_stage(config.scene_usd,"/World/scene")
+
+    if not config.is_nre_scene:
+        add_reference_to_stage(config.scene_usd,"/World")
+
     objects.GroundPlane("/World/ground_plane", visible=False)
     robot = robot_type.build("/World/robot")
     occupancy_map = await occupancy_map_generate_from_prim_async(
-        "/World/scene",
+        "/World",
         cell_size=robot.occupancy_map_cell_size,
         z_min=robot.occupancy_map_z_min,
         z_max=robot.occupancy_map_z_max
