@@ -69,7 +69,7 @@ class MobilityGenExtension(omni.ext.IExt):
         with self._visualize_window.frame:
             self._occ_map_frame = ui.Frame()
             self._occ_map_frame.set_build_fn(self.build_occ_map_frame)
-
+            
 
         self._teleop_window = omni.ui.Window("MobilityGen", width=300, height=300)
 
@@ -82,18 +82,13 @@ class MobilityGenExtension(omni.ext.IExt):
                         self.scene_usd_field = ui.StringField(model=self.scene_usd_field_string_model, height=25)
 
                     with ui.HStack():
-                        ui.Label("Is Nerf Scene")
-                        self.nerf_scene_model = ui.SimpleBoolModel(False)
-                        self.nerf_scene_checkbox = ui.CheckBox(model=self.nerf_scene_model)
-
-                    with ui.HStack():
                         ui.Label("Scenario Type")
                         self.scenario_combo_box = ui.ComboBox(0, *SCENARIOS.names())
 
                     with ui.HStack():
                         ui.Label("Robot Type")
                         self.robot_combo_box = ui.ComboBox(0, *ROBOTS.names())
-
+                
                     ui.Button("Build", clicked_fn=self.build_scenario)
 
                 with ui.VStack():
@@ -133,15 +128,14 @@ class MobilityGenExtension(omni.ext.IExt):
         config = Config(
             scenario_type=list(SCENARIOS.names())[self.scenario_combo_box.model.get_item_value_model().get_value_as_int()],
             robot_type=list(ROBOTS.names())[self.robot_combo_box.model.get_item_value_model().get_value_as_int()],
-            scene_usd=self.scene_usd_field_string_model.as_string,
-            is_nre_scene=self.nerf_scene_model.as_bool
+            scene_usd=self.scene_usd_field_string_model.as_string
         )
         return config
-
+    
     def scenario_type(self):
         index = self.scenario_combo_box.model.get_item_value_model().get_value_as_int()
         return SCENARIOS.get_index(index)
-
+    
     def on_shutdown(self):
         self.keyboard.disconnect()
         self.gamepad.disconnect()
@@ -161,7 +155,7 @@ class MobilityGenExtension(omni.ext.IExt):
         self.recording_step_label.text = f"Current recording duration: {self.recording_time:.2f}s"
         self.writer = writer
         self.update_recording_count()
-
+    
     def clear_recording(self):
         self.writer = None
         self.recording_name_label.text = "Current recording name: "
@@ -195,7 +189,7 @@ class MobilityGenExtension(omni.ext.IExt):
 
             if not is_alive:
                 self.reset()
-
+            
             if self.writer is not None:
                 state_dict = self.scenario.state_dict_common()
                 self.writer.write_state_dict_common(state_dict, step=self.step)
@@ -207,7 +201,7 @@ class MobilityGenExtension(omni.ext.IExt):
     def build_scenario(self):
 
         async def _build_scenario_async():
-
+            
             self.clear_recording()
             self.clear_scenario()
 
@@ -217,7 +211,7 @@ class MobilityGenExtension(omni.ext.IExt):
             self.scenario = await build_scenario_from_config(config)
 
             self.draw_occ_map()
-
+            
             world = get_world()
             await world.reset_async()
 

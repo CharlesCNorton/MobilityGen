@@ -24,7 +24,7 @@ from isaacsim.core.utils.stage import add_reference_to_stage
 from omni.ext.mobility_gen.occupancy_map import OccupancyMap
 from omni.ext.mobility_gen.config import Config
 from omni.ext.mobility_gen.utils.occupancy_map_utils import occupancy_map_generate_from_prim_async
-from omni.ext.mobility_gen.utils.global_utils import new_stage, new_world, set_viewport_camera
+from omni.ext.mobility_gen.utils.global_utils import new_stage, new_world, set_viewport_camera, get_stage
 from omni.ext.mobility_gen.scenarios import Scenario, SCENARIOS
 from omni.ext.mobility_gen.robots import ROBOTS
 from omni.ext.mobility_gen.reader import Reader
@@ -55,20 +55,22 @@ async def build_scenario_from_config(config: Config):
     robot_type = ROBOTS.get(config.robot_type)
     scenario_type = SCENARIOS.get(config.scenario_type)
 
-    if config.is_nre_scene:
-        open_stage(config.scene_usd)
+    open_stage(config.scene_usd)
+    stage = get_stage()
+
+    # Check which prim exists in the stage
+    if stage.GetPrimAtPath("/World"):
+        prim_path = "/World"
     else:
-        new_stage()
+        prim_path = "/Root"
+
     world = new_world(physics_dt=robot_type.physics_dt)
     await world.initialize_simulation_context_async()
 
-    if not config.is_nre_scene:
-        add_reference_to_stage(config.scene_usd,"/World")
-
-    objects.GroundPlane("/World/ground_plane", visible=False)
-    robot = robot_type.build("/World/robot")
+    objects.GroundPlane(os.path.join(prim_path, "ground_plane"), visible=False)
+    robot = robot_type.build(os.path.join(prim_path,"robot"))
     occupancy_map = await occupancy_map_generate_from_prim_async(
-        "/World",
+        prim_path,
         cell_size=robot.occupancy_map_cell_size,
         z_min=robot.occupancy_map_z_min,
         z_max=robot.occupancy_map_z_max
