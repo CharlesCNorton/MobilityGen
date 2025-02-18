@@ -30,6 +30,17 @@ from omni.ext.mobility_gen.robots import ROBOTS
 from omni.ext.mobility_gen.reader import Reader
 
 
+def _get_scene_root_prim() -> str:
+    """
+    Determines the root prim path of the scene by checking if '/World' or '/Root' exists.
+
+    Returns:
+        str: The path to the root prim ('/World' or '/Root')
+    """
+    stage = get_stage()
+    if stage.GetPrimAtPath("/World"):
+        return "/World"
+    return "/Root"
 
 def load_scenario(path: str) -> Scenario:
     reader = Reader(path)
@@ -37,10 +48,11 @@ def load_scenario(path: str) -> Scenario:
     robot_type = ROBOTS.get(config.robot_type)
     scenario_type = SCENARIOS.get(config.scenario_type)
     open_stage(os.path.join(path, "stage.usd"))
-    prim_utils.delete_prim("/World/robot")
+    prim_path = _get_scene_root_prim()
+    prim_utils.delete_prim(os.path.join(prim_path, "robot"))
     new_world(physics_dt=robot_type.physics_dt)
     occupancy_map = reader.read_occupancy_map()
-    robot = robot_type.build("/World/robot")
+    robot = robot_type.build(os.path.join(prim_path, "robot"))
     chase_camera_path = robot.build_chase_camera()
     set_viewport_camera(chase_camera_path)
     robot_type = ROBOTS.get(config.robot_type)
@@ -56,13 +68,7 @@ async def build_scenario_from_config(config: Config):
     scenario_type = SCENARIOS.get(config.scenario_type)
 
     open_stage(config.scene_usd)
-    stage = get_stage()
-
-    # Check which prim exists in the stage
-    if stage.GetPrimAtPath("/World"):
-        prim_path = "/World"
-    else:
-        prim_path = "/Root"
+    prim_path = _get_scene_root_prim()
 
     world = new_world(physics_dt=robot_type.physics_dt)
     await world.initialize_simulation_context_async()
