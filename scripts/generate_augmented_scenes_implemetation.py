@@ -264,32 +264,26 @@ class GenerateAugmentedScene:
     Args:
         config: Configuration dictionary containing:
             - env_url: Path to base environment USD file
-            - env_type: Type of environment ('nre' or 'default')
-            - enable_nre_mesh_collision: Whether to enable collision for NRE mesh
-            - add_ground_plane: Whether to add a ground plane
             - add_obstacles: Whether to add random obstacles
-            - ground_plane_args: Ground plane configuration
+            - ground_plane_args: Ground plane configuration (z_position, is_visible)
             - scene_generation: Scene generation parameters
             - obstacles_config: Obstacle placement configuration
-            - box_base_url: Base URL for box assets
-            - barrel_base_url: Base URL for barrel assets
-            - box_types: List of available box types
-            - barrel_types: List of available barrel types
-            - box_vs_barrel_ratio: Ratio of boxes to barrels
         out_dir: Directory to save generated scenes and maps
+
+    Note:
+        Ground plane is automatically added for NRE environments.
+        Environment type (NRE/default) is automatically detected.
     """
 
     def __init__(self, config: dict, out_dir: str) -> None:
         self.CONFIG = config
         self._out_dir = out_dir
         self._env_url = config['env_url']
-        self._env_type = "default"
-        self._enable_nre_mesh_collision = config.get('enable_nre_mesh_collision', False)
+        self._env_type = "default"  # Will be updated during load_env
         self._stage = None
         self._nre_mesh = None
         self._obstacles = []
 
-        self.add_ground_plane = config['add_ground_plane']
         self.add_obstacles = config['add_obstacles']
         self.ground_plane_args = config.get('ground_plane_args', {})
 
@@ -336,6 +330,10 @@ class GenerateAugmentedScene:
             Tuple containing:
                 - Original occupancy map
                 - Processed occupancy map with masked regions
+
+        Note:
+            Ground plane is automatically added for NRE environments.
+            Collision is always enabled for NRE mesh.
         """
         app = omni.kit.app.get_app()
 
@@ -352,7 +350,7 @@ class GenerateAugmentedScene:
         # Detect environment type
         self._env_type = detect_env_type(self._stage)
 
-        # Get NRE mesh dimensions
+        # Get NRE mesh dimensions and add ground plane if NRE
         nre_bbox = None
         if self._env_type == "nre":
             self._set_nre_mesh_collision()
@@ -362,15 +360,15 @@ class GenerateAugmentedScene:
                 print(f"  Min: {nre_bbox['min']}")
                 print(f"  Max: {nre_bbox['max']}")
                 print(f"  Size: {nre_bbox['size']}")
+
+                # Add ground plane for NRE environment
+                print("Adding ground plane (NRE environment detected)...")
+                GroundPlane("/World/defaultGroundPlane",
+                           z_position=self.ground_plane_args.get('z_position', 0),
+                           visible=self.ground_plane_args.get('is_visible', True))
+
             await app.next_update_async()
 
-        if self.add_ground_plane:
-            print("Adding ground plane...")
-            GroundPlane("/World/defaultGroundPlane",
-                       z_position=self.ground_plane_args.get('z_position', 0),
-                       visible=self.ground_plane_args.get('is_visible', True))
-
-        await app.next_update_async()
         await app.next_update_async()
         print("Loading environment complete.")
 
@@ -751,7 +749,6 @@ if __name__ == "__main__":
     # Default configuration
     config = {
         "env_url": args.env_url,
-        "add_ground_plane": True,
         "add_obstacles": True,
         "ground_plane_args": {
             "z_position": 0.05,
